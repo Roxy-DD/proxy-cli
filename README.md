@@ -101,6 +101,15 @@ proxy
 
 通常你不需要手动修改此文件，工具会自动管理。
 
+## 技术栈
+
+本项目基于 Rust 构建，使用了以下优秀的开源库：
+
+*   **[dialoguer](https://github.com/console-rs/dialoguer)**: 用于构建优雅的交互式命令行界面（TUI）。
+*   **[console](https://github.com/console-rs/console)**: 处理跨平台的终端操作。
+*   **[serde](https://github.com/serde-rs/serde)** & **[serde_json](https://github.com/serde-rs/json)**: 处理配置文件的序列化与反序列化。
+*   **[directories](https://github.com/dirs-dev/directories-rs)**: 获取符合系统规范的配置目录路径。
+
 ## 技术原理
 
 本工具通过 **Wrapper Pattern（包装器模式）** 巧妙地解决了子进程无法修改父进程环境变量的限制。
