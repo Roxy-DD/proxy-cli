@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 匹配 v1.2.3 格式的 tag
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }} (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: proxy-linux-x86_64
+            artifact_path: target/x86_64-unknown-linux-gnu/release/proxy
+            archive_format: tar.gz
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact_name: proxy-macos-x86_64
+            artifact_path: target/x86_64-apple-darwin/release/proxy
+            archive_format: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact_name: proxy-macos-aarch64
+            artifact_path: target/aarch64-apple-darwin/release/proxy
+            archive_format: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_name: proxy-windows-x86_64
+            artifact_path: target/x86_64-pc-windows-msvc/release/proxy.exe
+            archive_format: zip
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path target/x86_64-pc-windows-msvc/release/proxy.exe -DestinationPath ${{ matrix.artifact_name }}.zip -Force
+
+      - name: Create archive (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../${{ matrix.artifact_name }}.${{ matrix.archive_format }} proxy
+          cd ../../..
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.${{ matrix.archive_format }}
+          retention-days: 7
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Extract tag name
+        id: tag
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Tag name: $TAG_NAME"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          name: Release ${{ steps.tag.outputs.tag_name }}
+          body: |
+            ## 🚀 Release ${{ steps.tag.outputs.tag_name }}
+            
+            ### 📦 下载
+            
+            - **Windows (x86_64)**: `proxy-windows-x86_64.zip`
+            - **Linux (x86_64)**: `proxy-linux-x86_64.tar.gz`
+            - **macOS (Intel)**: `proxy-macos-x86_64.tar.gz`
+            - **macOS (Apple Silicon)**: `proxy-macos-aarch64.tar.gz`
+            
+            ### 📥 安装
+            
+            1. 下载对应平台的压缩包
+            2. 解压文件
+            3. （可选）将可执行文件添加到 PATH 环境变量
+            
+            详细使用说明请查看 [README.md](README.md)
+            
+            ### ⚠️ 注意事项
+            
+            - 本工具设置的是**会话级代理**（通过环境变量），仅对当前终端会话有效
+            - 关闭终端后，代理设置会自动失效
+            - 不影响系统全局代理设置
+          files: |
+            artifacts/**/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
