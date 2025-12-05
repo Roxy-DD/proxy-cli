@@ -1,6 +1,6 @@
-# Ultimate CLI Proxy Manager
+# proxy-cli
 
-一个功能强大的命令行代理管理工具，用于快速切换本地 HTTP/HTTPS 代理。
+一个简单的命令行代理管理工具，用于快速切换本地 HTTP/HTTPS 代理。
 
 ## 功能特点
 
