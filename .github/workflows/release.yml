@@ -13,21 +13,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact_name: proxy-linux-x86_64
-            artifact_path: target/x86_64-unknown-linux-gnu/release/proxy
-            archive_format: tar.gz
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact_name: proxy-macos-x86_64
-            artifact_path: target/x86_64-apple-darwin/release/proxy
-            archive_format: tar.gz
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            artifact_name: proxy-macos-aarch64
-            artifact_path: target/aarch64-apple-darwin/release/proxy
-            archive_format: tar.gz
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact_name: proxy-windows-x86_64
@@ -66,18 +51,7 @@ jobs:
         run: |
           Compress-Archive -Path ${{ matrix.artifact_path }} -DestinationPath ${{ matrix.artifact_name }}.zip -Force
 
-      - name: Create archive (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          # 获取可执行文件的目录
-          EXEC_DIR=$(dirname "${{ matrix.artifact_path }}")
-          # 获取可执行文件的名称
-          EXEC_NAME=$(basename "${{ matrix.artifact_path }}")
-          # 创建归档
-          cd "$EXEC_DIR"
-          tar czf "../../../${{ matrix.artifact_name }}.${{ matrix.archive_format }}" "$EXEC_NAME"
-          cd ../../..
+
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -120,9 +94,6 @@ jobs:
             ### 📦 下载
             
             - **Windows (x86_64)**: `proxy-windows-x86_64.zip`
-            - **Linux (x86_64)**: `proxy-linux-x86_64.tar.gz`
-            - **macOS (Intel)**: `proxy-macos-x86_64.tar.gz`
-            - **macOS (Apple Silicon)**: `proxy-macos-aarch64.tar.gz`
             
             ### 📥 安装
             

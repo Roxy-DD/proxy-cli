@@ -14,8 +14,6 @@
 ## 支持平台
 
 - **Windows**: Windows 10/11 (x86_64)
-- **Linux**: x86_64 (GNU)
-- **macOS**: Intel (x86_64) 和 Apple Silicon (aarch64)
 
 ## 代理类型说明
 
@@ -30,109 +28,100 @@
 
 ## 安装方法
 
-### 方法一：从 GitHub Releases 下载
+### 方法一：双击安装（推荐）
 
-1. 访问项目的 [GitHub Releases 页面](https://github.com/Roxy-DD/proxy-cli/releases)
+1. 访问项目的 [GitHub Releases 页面](https://github.com/Roxy-DD/proxy-cli/releases) 下载最新版本的 `proxy-windows-x86_64.zip`。
+2. 解压下载的文件。
+3. **直接双击运行 `proxy.exe`**。
+4. 程序会自动检测并提示安装到 PowerShell 配置文件，输入 `Y` 确认即可。
+5. **重启** PowerShell 终端即可使用。
 
-2. 根据您的平台下载对应的文件：
-   - **Windows**: `proxy-windows-x86_64.zip`
-   - **Linux**: `proxy-linux-x86_64.tar.gz`
-   - **macOS (Intel)**: `proxy-macos-x86_64.tar.gz`
-   - **macOS (Apple Silicon)**: `proxy-macos-aarch64.tar.gz`
+### 方法二：手动安装
 
-3. 解压文件，将可执行文件保存到任意目录
-
-4. 可选：将该目录添加到系统 PATH 环境变量，即可在任意位置使用 `proxy` 命令
-
-### 方法二：从源码编译
-
-1. 确保已安装 Rust 环境（[安装指南](https://www.rust-lang.org/tools/install)）
-
-2. 克隆仓库并进入目录：
-   ```powershell
-   git clone https://github.com/Roxy-DD/proxy-cli.git
-   cd proxy-cli
-   ```
-
-3. 编译程序：
-   ```powershell
-   cargo build --release
-   ```
-
-4. 编译完成后，可执行文件位于：
-   - **Windows**: `target/release/proxy.exe`
-   - **Linux/macOS**: `target/release/proxy`
-
-### 添加到 PATH（可选）
-
-#### Windows (PowerShell)
+1. 从 Release 页面下载并解压文件。
+2. 将 `proxy.exe` 放置在任意位置。
+3. 将以下函数添加到你的 PowerShell 配置文件 (`$PROFILE`) 中：
 
 ```powershell
-# 临时添加到当前会话（重启 PowerShell 后失效）
-$env:PATH += ";路径\到\proxy.exe所在目录"
-
-# 永久添加到用户环境变量
-[Environment]::SetEnvironmentVariable("PATH", "$env:PATH;路径\到\proxy.exe所在目录", [EnvironmentVariableTarget]::User)
+function proxy {
+    # 请修改为实际的 proxy.exe 路径
+    $binaryPath = "C:\path\to\your\proxy.exe"
+    $output = & $binaryPath
+    $output | ForEach-Object {
+        if ($_ -match "^#SET_PROXY:(.+)$") {
+            $env:HTTP_PROXY = $matches[1]
+            $env:HTTPS_PROXY = $matches[1]
+        } elseif ($_ -eq "#CLEAR_PROXY") {
+            $env:HTTP_PROXY = ""
+            $env:HTTPS_PROXY = ""
+        }
+    }
+}
 ```
 
-#### Linux/macOS
+### 方法三：从源码编译
 
-```bash
-# 添加到 ~/.bashrc 或 ~/.zshrc
-export PATH="$PATH:/path/to/proxy"
-
-# 或者创建符号链接
-sudo ln -s /path/to/proxy /usr/local/bin/proxy
-```
+1. 克隆仓库：`git clone https://github.com/Roxy-DD/proxy-cli.git`
+2. 运行安装脚本：`.\install.ps1`
+3. 重启终端。
 
 ## 使用说明
 
-### 交互式模式
+本工具设计为纯交互式工具，操作非常简单。
 
-直接运行程序即可启动交互式菜单：
+### 启动
+
+在终端输入以下命令启动工具：
 
 ```powershell
 proxy
 ```
 
-使用上下箭头导航菜单，回车键选择功能，Q/Esc 键退出。
+### 交互界面
 
-**注意**：代理设置仅在当前 PowerShell/终端会话中有效。关闭终端后，代理设置会自动失效。
+启动后，你将看到一个交互式菜单：
 
-### 命令行模式
+1.  **状态显示**：顶部会显示当前代理是否开启，以及当前的端口。
+2.  **菜单选项**：
+    *   **Enable/Disable Proxy**：回车键切换代理的开启/关闭状态。
+    *   **Change Port**：选择此项后，输入新的端口号（如 7890）并回车。
+    *   **Exit**：退出工具。
 
-#### 启用代理
-
-```powershell
-proxy enable
-```
-
-#### 禁用代理
-
-```powershell
-proxy disable
-```
-
-#### 设置代理端口
-
-```powershell
-proxy set-port 8080
-```
-
-#### 查看当前状态
-
-```powershell
-proxy status
-```
+**提示**：
+*   使用 `↑` `↓` 箭头键移动光标。
+*   使用 `Enter` 键确认选择。
+*   代理设置仅在**当前 PowerShell 会话**中有效。关闭窗口后自动失效。
 
 ## 配置文件
 
-配置文件用于保存端口设置，位于：
+配置文件用于保存你的端口设置和上次的启用状态。
 
-- **Windows**: `%APPDATA%\proxy-cli\config.json`
-- **Linux/macOS**: `~/.config/proxy-cli/config.json`
+*   **位置**: `%APPDATA%\proxy-cli\config.json`
+*   **格式**: JSON
 
-配置文件仅保存端口设置，代理的启用/禁用状态不会持久化（因为使用的是会话级环境变量）。
+通常你不需要手动修改此文件，工具会自动管理。
+
+## 技术原理
+
+本工具通过 **Wrapper Pattern（包装器模式）** 巧妙地解决了子进程无法修改父进程环境变量的限制。
+
+### 核心问题
+在操作系统中，子进程（Rust 程序）继承父进程（PowerShell）的环境变量，但子进程对环境变量的修改仅限于自身，无法反向影响父进程。因此，直接在 Rust 中设置 `HTTP_PROXY` 是无效的。
+
+### 解决方案
+我们采用 "Rust 指挥，PowerShell 执行" 的策略：
+
+1. **Rust 端 (指挥官)**：
+   - 运行交互式界面 (TUI)，让用户选择操作。
+   - 程序退出前，将需要执行的操作以**特殊指令**的形式打印到标准输出 (`stdout`)。
+   - 例如：`#SET_PROXY:http://127.0.0.1:7890` 或 `#CLEAR_PROXY`。
+
+2. **PowerShell 端 (执行者)**：
+   - 我们在 PowerShell 中定义了一个 `proxy` 函数（Wrapper）。
+   - 该函数调用 Rust 二进制文件，并捕获其输出。
+   - 解析输出内容，一旦发现特殊指令，立即在**当前 Shell 上下文**中执行环境变量的修改操作 (`$env:HTTP_PROXY = ...`)。
+
+这种设计既保留了 Rust 编写高性能、跨平台 TUI 的优势，又完美实现了对 Shell 环境的控制。
 
 ## 许可证
 
