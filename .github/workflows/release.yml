@@ -93,7 +93,7 @@ jobs:
             
             ### 📦 下载
             
-            - **Windows (x86_64)**: `proxy-windows-x86_64.zip`
+            - **Windows (x86_64)**：`proxy-windows-x86_64.zip`
             
             ### 📥 安装
             

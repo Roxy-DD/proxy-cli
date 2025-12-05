@@ -13,7 +13,7 @@
 
 ## 支持平台
 
-- **Windows**: Windows 10/11 (x86_64)
+- **Windows**：Windows 10/11 (x86_64)
 
 ## 代理类型说明
 
@@ -96,8 +96,8 @@ proxy
 
 配置文件用于保存你的端口设置和上次的启用状态。
 
-*   **位置**: `%APPDATA%\proxy-cli\config.json`
-*   **格式**: JSON
+*   **位置**：%APPDATA%\proxy-cli\config.json
+*   **格式**：JSON
 
 通常你不需要手动修改此文件，工具会自动管理。
 

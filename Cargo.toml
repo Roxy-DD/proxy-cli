@@ -1,6 +1,6 @@
 [package]
 name = "proxy-cli"
-version = "0.0.5"
+version = "0.1.0"
 edition = "2021"
 description = "Session-level HTTP/HTTPS proxy manager (Rust edition)"
 authors = ["2e41e462ac41d481ebfbbb2465242a976de4596b89b94e2c672b66b26454d0b3"]
