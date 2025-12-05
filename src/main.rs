@@ -1,29 +1,14 @@
 use clap::Parser;
 use thiserror::Error;
 use std::io::{self, Write};
-use std::time::Duration;
 // 导入必要的依赖
 use crossterm::{
-    event::{self},
     event::KeyCode,
     ExecutableCommand,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen}
 };
 
-/// 清空 crossterm 事件队列，避免残留的键盘事件被主循环捕获
-fn clear_crossterm_events() -> io::Result<()> {
-    // 非阻塞地读取并丢弃所有待处理的事件
-    // 最多清空 100 个事件，避免无限循环
-    for _ in 0..100 {
-        if !event::poll(Duration::from_millis(0))? {
-            // 没有更多事件了
-            break;
-        }
-        // 读取并丢弃事件
-        let _ = event::read();
-    }
-    Ok(())
-}
+
 
 mod config;
 mod proxy;
@@ -44,8 +29,7 @@ enum AppError {
 
 type AppResult<T> = Result<T, AppError>;
 
-// 修复 clap default 语法
-#[derive(Parser, Debug, Default)]
+#[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 enum Command {
     /// Enable proxy with saved port
@@ -60,25 +44,43 @@ enum Command {
     /// Show current proxy status
     Status,
     /// Start interactive menu (default)
-    #[default]
     Interactive,
 }
 
 fn main() -> AppResult<()> {
     let mut config = config::load_config()?;
     
-    // 检查是否提供了命令，如果没有则使用默认的Interactive
-    let args = match std::env::args().len() {
-        1 => Command::Interactive,
-        _ => Command::parse(),
+    // 确保程序启动时不会自动启用代理，无论配置文件中的enabled字段是什么值
+    config.enabled = false;
+    config::save_config(&config)?;
+    
+    // 清空事件队列，避免程序启动时受到残留键盘事件的影响
+    let _ = ui::clear_event_queue();
+    
+    // 解析命令行参数，如果没有提供子命令，则默认使用Interactive
+    let args = match Command::try_parse() {
+        Ok(args) => args,
+        Err(e) => {
+            // 如果是因为缺少子命令而解析失败，则使用默认的Interactive命令
+            if e.kind() == clap::error::ErrorKind::DisplayHelpOnMissingArgumentOrSubcommand {
+                Command::Interactive
+            } else {
+                e.exit();
+            }
+        }
     };
 
+    println!("Command: {:?}", args);
+    
     match args {
         Command::Enable => enable_proxy(&mut config)?,
         Command::Disable => disable_proxy(&mut config)?,
         Command::SetPort { port } => set_port(&mut config, port)?,
         Command::Status => show_status(&config)?,
-        Command::Interactive => run_interactive(&mut config)?,
+        Command::Interactive => {
+            println!("Entering interactive mode...");
+            run_interactive(&mut config)?
+        },
     }
 
     Ok(())
@@ -270,9 +272,12 @@ fn run_interactive(config: &mut config::Config) -> AppResult<()> {
                         stdout.execute(LeaveAlternateScreen)?;
                         stdout.flush()?;
                         
+                        // 增加延迟，确保终端状态稳定
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                        
                         // ⚠️ 关键修复：在退出 alternate screen 后，清空事件队列
                         // 避免之前残留的键盘事件干扰输入
-                        let _ = clear_crossterm_events();
+                        let _ = ui::clear_event_queue();
                         
                         // 清除屏幕，准备输入（清除所有内容并移动光标到左上角）
                         print!("\x1B[2J\x1B[H");
@@ -288,13 +293,22 @@ fn run_interactive(config: &mut config::Config) -> AppResult<()> {
                         print!("\x1B[2J\x1B[H");
                         io::stdout().flush()?;
                         
+                        // 增加延迟，确保输入操作完全完成
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                        
                         // ⚠️ 关键修复：输入完成后，再次清空事件队列
                         // 确保用户按回车确认输入时，这个回车键事件不会触发主循环
-                        let _ = clear_crossterm_events();
+                        let _ = ui::clear_event_queue();
                         
                         // 重新进入 alternate screen
                         stdout.execute(EnterAlternateScreen)?;
                         stdout.flush()?;
+                        
+                        // 增加延迟，确保终端状态稳定
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                        
+                        // 最后一次清空事件队列，确保所有残留事件都被清除
+                        let _ = ui::clear_event_queue();
                         
                         // 显示结果消息
                         let (_, height) = crossterm::terminal::size()?;

@@ -227,16 +227,26 @@ pub fn input_port(current_port: Option<u16>) -> io::Result<Option<String>> {
 }
 
 /// 清空 crossterm 事件队列，避免残留的键盘事件被主循环捕获
-fn clear_event_queue() -> io::Result<()> {
+pub fn clear_event_queue() -> io::Result<()> {
+    // 先短暂延迟，确保所有事件都已进入队列
+    std::thread::sleep(std::time::Duration::from_millis(50));
+    
     // 非阻塞地读取并丢弃所有待处理的事件
     // 最多清空 100 个事件，避免无限循环
-    for _ in 0..100 {
-        if !event::poll(Duration::from_millis(0))? {
+    let mut count = 0;
+    while count < 100 {
+        if event::poll(Duration::from_millis(0))? {
+            // 读取并丢弃事件
+            let _ = event::read();
+            count += 1;
+        } else {
             // 没有更多事件了
             break;
         }
-        // 读取并丢弃事件
-        let _ = event::read();
     }
+    
+    // 再次延迟，确保系统处理完所有事件
+    std::thread::sleep(std::time::Duration::from_millis(50));
+    
     Ok(())
 }

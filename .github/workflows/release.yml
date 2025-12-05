@@ -64,14 +64,19 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Compress-Archive -Path target/x86_64-pc-windows-msvc/release/proxy.exe -DestinationPath ${{ matrix.artifact_name }}.zip -Force
+          Compress-Archive -Path ${{ matrix.artifact_path }} -DestinationPath ${{ matrix.artifact_name }}.zip -Force
 
       - name: Create archive (Unix)
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          cd target/${{ matrix.target }}/release
-          tar czf ../../../${{ matrix.artifact_name }}.${{ matrix.archive_format }} proxy
+          # 获取可执行文件的目录
+          EXEC_DIR=$(dirname "${{ matrix.artifact_path }}")
+          # 获取可执行文件的名称
+          EXEC_NAME=$(basename "${{ matrix.artifact_path }}")
+          # 创建归档
+          cd "$EXEC_DIR"
+          tar czf "../../../${{ matrix.artifact_name }}.${{ matrix.archive_format }}" "$EXEC_NAME"
           cd ../../..
 
       - name: Upload artifact
